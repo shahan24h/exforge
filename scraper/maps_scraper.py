@@ -4,6 +4,9 @@ import os
 from datetime import datetime
 from playwright.async_api import async_playwright
 
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from database.db import init_db, insert_lead
 # ── CONFIG ──────────────────────────────────────────────
 SEARCH_QUERY = "cleaning services"
 LOCATION     = "New York, NY"
@@ -136,7 +139,6 @@ async def get_attr(page, selector, attr):
     except:
         return None
 
-
 def save_to_csv(data: list, query: str, location: str):
     if not data:
         print("[!] No data to save.")
@@ -156,8 +158,20 @@ def save_to_csv(data: list, query: str, location: str):
 
 
 async def main():
+    init_db()
     data = await scrape_google_maps(SEARCH_QUERY, LOCATION, MAX_RESULTS)
+
     save_to_csv(data, SEARCH_QUERY, LOCATION)
+
+    inserted = 0
+    skipped  = 0
+    for business in data:
+        if insert_lead(business):
+            inserted += 1
+        else:
+            skipped += 1
+
+    print(f"[✓] DB: {inserted} inserted, {skipped} skipped (duplicates)")
 
 
 if __name__ == "__main__":
