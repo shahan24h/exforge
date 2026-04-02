@@ -25,7 +25,6 @@ REPORTS_DIR = os.path.join(
 
 
 def get_approved_leads():
-    """Get all approved leads from the database."""
     conn   = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -38,24 +37,17 @@ def get_approved_leads():
     leads = []
     for row in rows:
         leads.append({
-            "id":       row[0],
-            "name":     row[1],
-            "category": row[2],
-            "address":  row[3],
-            "phone":    row[4],
-            "website":  row[5],
-            "rating":   row[6],
-            "reviews":  row[7],
+            "id": row[0], "name": row[1], "category": row[2],
+            "address": row[3], "phone": row[4], "website": row[5],
+            "rating": row[6], "reviews": row[7],
         })
     return leads
 
 
 def save_audit_result(lead_id: int, audit: dict):
-    """Save audit results to the database."""
     conn   = get_connection()
     cursor = conn.cursor()
 
-    # Add audit columns if they don't exist
     for col in ["screenshot_path", "audit_data", "site_status", "audited_at", "email"]:
         try:
             cursor.execute(f"ALTER TABLE leads ADD COLUMN {col} TEXT")
@@ -85,6 +77,11 @@ def save_audit_result(lead_id: int, audit: dict):
 
 async def extract_email(page, url: str) -> str:
     """Try to extract email from website."""
+    import urllib.parse
+
+    def clean_email(raw: str) -> str:
+        return urllib.parse.unquote(raw).strip().lower()
+
     try:
         # Check current page for mailto links
         emails = await page.eval_on_selector_all(
@@ -92,7 +89,7 @@ async def extract_email(page, url: str) -> str:
             "els => els.map(e => e.href.replace('mailto:', '').split('?')[0].trim())"
         )
         if emails:
-            return emails[0]
+            return clean_email(emails[0])
 
         # Try contact pages
         contact_urls = [
@@ -109,7 +106,7 @@ async def extract_email(page, url: str) -> str:
                     "els => els.map(e => e.href.replace('mailto:', '').split('?')[0].trim())"
                 )
                 if emails:
-                    return emails[0]
+                    return clean_email(emails[0])
             except:
                 continue
 
@@ -122,7 +119,7 @@ async def extract_email(page, url: str) -> str:
                     x in m.lower() for x in ["@2x", ".png", ".jpg", "example", "sentry", "wix"]
                 )]
                 if valid:
-                    return valid[0]
+                    return clean_email(valid[0])
         except:
             pass
 
@@ -133,24 +130,12 @@ async def extract_email(page, url: str) -> str:
 
 
 async def audit_website(page, lead: dict) -> dict:
-    """
-    Visit a website and run full audit:
-    - Check if site is up
-    - Take screenshot
-    - Extract email
-    - Check SEO basics
-    - Check mobile viewport
-    """
     url   = lead["website"]
     name  = lead["name"]
     audit = {
-        "url":             url,
-        "site_status":     "unknown",
-        "screenshot_path": None,
-        "email":           "",
-        "seo":             {},
-        "issues":          [],
-        "score":           0,
+        "url": url, "site_status": "unknown",
+        "screenshot_path": None, "email": "",
+        "seo": {}, "issues": [], "score": 0,
     }
 
     # ── Step 1: Visit the site ──
@@ -202,7 +187,6 @@ async def audit_website(page, lead: dict) -> dict:
     issues = []
     score  = 100
 
-    # Title tag
     try:
         title = await page.title()
         seo["title"] = title
@@ -216,7 +200,6 @@ async def audit_website(page, lead: dict) -> dict:
         issues.append("Could not read page title")
         score -= 10
 
-    # Meta description
     try:
         meta_desc = await page.get_attribute('meta[name="description"]', "content")
         seo["meta_description"] = meta_desc
@@ -230,7 +213,6 @@ async def audit_website(page, lead: dict) -> dict:
         issues.append("Missing meta description")
         score -= 15
 
-    # H1 tag
     try:
         h1 = await page.locator("h1").first.inner_text(timeout=3000)
         seo["h1"] = h1
@@ -241,11 +223,9 @@ async def audit_website(page, lead: dict) -> dict:
         issues.append("Missing H1 tag")
         score -= 10
 
-    # Images without alt text
     try:
         imgs_without_alt = await page.eval_on_selector_all(
-            "img:not([alt])",
-            "els => els.length"
+            "img:not([alt])", "els => els.length"
         )
         seo["images_missing_alt"] = imgs_without_alt
         if imgs_without_alt > 0:
@@ -254,14 +234,12 @@ async def audit_website(page, lead: dict) -> dict:
     except:
         pass
 
-    # HTTPS check
     if not url.startswith("https://"):
         issues.append("Site not using HTTPS")
         score -= 20
     else:
         seo["https"] = True
 
-    # Mobile viewport
     try:
         viewport_meta = await page.get_attribute('meta[name="viewport"]', "content")
         seo["mobile_viewport"] = viewport_meta
@@ -272,7 +250,6 @@ async def audit_website(page, lead: dict) -> dict:
         issues.append("Missing mobile viewport meta tag")
         score -= 15
 
-    # Contact info visible
     try:
         body_text = await page.locator("body").inner_text(timeout=3000)
         if "phone" not in body_text.lower() and "contact" not in body_text.lower():
@@ -289,7 +266,6 @@ async def audit_website(page, lead: dict) -> dict:
 
 
 async def run_auditor():
-    """Main website auditing pipeline."""
     leads = get_approved_leads()
 
     if not leads:
@@ -304,18 +280,12 @@ async def run_auditor():
         page    = await browser.new_page(viewport={"width": 1280, "height": 800})
 
         for i, lead in enumerate(leads, 1):
-            name    = lead["name"]
-            website = lead["website"]
-
-            print(f"  [{i}/{len(leads)}] Auditing: {name}")
-            print(f"    URL: {website}")
+            print(f"  [{i}/{len(leads)}] Auditing: {lead['name']}")
+            print(f"    URL: {lead['website']}")
 
             audit = await audit_website(page, lead)
-
-            # Save to database
             save_audit_result(lead["id"], audit)
 
-            # Update status
             if audit["site_status"] == "online":
                 update_lead_status(lead["phone"], "audited")
                 print(f"    [✓] Score: {audit['score']}/100")
@@ -325,7 +295,6 @@ async def run_auditor():
             else:
                 update_lead_status(lead["phone"], "site_error")
                 print(f"    [✗] Site status: {audit['site_status']}")
-
             print()
 
         await browser.close()

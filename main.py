@@ -68,34 +68,85 @@ def run_pipeline():
     print("="*60)
     run_shortlister()
 
-
-    # ── Phase 4: Website Audit ──
+    # ── Phase 3: Website Audit ──
     print("\n" + "="*60)
-    print("  PHASE 4 — Website Auditor")
+    print("  PHASE 3 — Website Auditor")
     print("="*60)
     asyncio.run(run_auditor())
-    #Removed Gate 1
-    # ── Phase 5: Report Generation ──
+
+    # ── Phase 4: Report Generation ──
     print("\n" + "="*60)
-    print("  PHASE 5 — Report Generator")
+    print("  PHASE 4 — Report Generator")
     print("="*60)
     run_report_generator()
 
-    # ── Phase 6: Email Composition ──
+    # ── Phase 5: Email Composition ──
     print("\n" + "="*60)
-    print("  PHASE 6 — Email Composer")
+    print("  PHASE 5 — Email Composer")
     print("="*60)
     run_email_composer()
-    #Removed Gate 7
-    # ── Phase 8: Send Emails ──
+
+    # ── Phase 6: Send Emails ──
     print("\n" + "="*60)
-    print("  PHASE 8 — Sending Emails")
+    print("  PHASE 6 — Sending Emails")
     print("="*60)
     run_sender()
 
     print("\n" + "="*60)
     print(f"  CYCLE COMPLETE — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     print("="*60)
+    get_stats()
+
+
+def get_emails_sent_today() -> int:
+    """Return how many emails were sent today."""
+    import sqlite3
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "leads.db")
+    conn    = sqlite3.connect(db_path)
+    cursor  = conn.cursor()
+    cursor.execute("""
+        SELECT COUNT(*) FROM leads
+        WHERE status = 'emailed'
+        AND date(emailed_at) = date('now')
+    """)
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
+
+
+def run_until_target(target: int = 30):
+    """Keep running pipeline cycles until target emails sent today."""
+    print(f"\n[+] Target: {target} emails today")
+
+    max_cycles = 10  # safety limit
+    cycle      = 0
+
+    while cycle < max_cycles:
+        sent_today = get_emails_sent_today()
+        print(f"\n[+] Emails sent today: {sent_today}/{target}")
+
+        if sent_today >= target:
+            print(f"[✓] Target reached — {sent_today} emails sent today!")
+            break
+
+        remaining = target - sent_today
+        print(f"[+] Need {remaining} more — starting cycle {cycle + 1}...")
+
+        run_pipeline()
+        cycle += 1
+
+        sent_today = get_emails_sent_today()
+        if sent_today >= target:
+            print(f"\n[✓] Target reached — {sent_today} emails sent today!")
+            break
+
+        print(f"\n[+] Cycle {cycle} done. Sent today: {sent_today}/{target}")
+        print(f"[+] Waiting 60 seconds before next cycle...")
+        time.sleep(60)
+
+    if cycle >= max_cycles:
+        print(f"\n[!] Max cycles ({max_cycles}) reached. Sent today: {get_emails_sent_today()}")
+
     get_stats()
 
 
@@ -119,21 +170,22 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="ExForge Lead Gen Agent")
-    parser.add_argument("--now",       action="store_true", help="Run pipeline once immediately")
-    parser.add_argument("--schedule",  action="store_true", help="Run on daily schedule")
-    parser.add_argument("--scrape",    action="store_true", help="Run scraper only")
+    parser.add_argument("--now", action="store_true", help="Run pipeline once immediately")
+    parser.add_argument("--target", type=int, default=30, help="Target emails per day (default: 30)")
+    parser.add_argument("--schedule", action="store_true", help="Run on daily schedule")
+    parser.add_argument("--scrape", action="store_true", help="Run scraper only")
     parser.add_argument("--shortlist", action="store_true", help="Run shortlister only")
-    parser.add_argument("--audit",     action="store_true", help="Run auditor only")
-    parser.add_argument("--report",    action="store_true", help="Run report generator only")
-    parser.add_argument("--compose",   action="store_true", help="Run email composer only")
-    parser.add_argument("--send",      action="store_true", help="Run email sender only")
-    parser.add_argument("--sent",      action="store_true", help="Show all sent emails")
+    parser.add_argument("--audit", action="store_true", help="Run auditor only")
+    parser.add_argument("--report", action="store_true", help="Run report generator only")
+    parser.add_argument("--compose", action="store_true", help="Run email composer only")
+    parser.add_argument("--send", action="store_true", help="Run email sender only")
+    parser.add_argument("--sent", action="store_true", help="Show all sent emails")
     args = parser.parse_args()
 
     if args.schedule:
         start_scheduler()
     elif args.now:
-        run_pipeline()
+        run_until_target(args.target)
     elif args.scrape:
         asyncio.run(scrape_phase())
     elif args.shortlist:

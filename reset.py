@@ -1,13 +1,19 @@
 import sqlite3
 
 conn = sqlite3.connect('data/leads.db')
-conn.execute("UPDATE leads SET status='approved' WHERE status IN ('no_email', 'email_failed', 'audited', 'report_ready', 'email_drafted', 'approved_to_send')")
+
+# Fix malformed email and reset status
+conn.execute("""
+    UPDATE leads 
+    SET email = 'manhattancleaningsolutions@gmail.com',
+        status = 'approved_to_send'
+    WHERE name = 'Manhattan Cleaning Solutions'
+""")
 conn.commit()
 
 cursor = conn.cursor()
-cursor.execute("SELECT status, COUNT(*) FROM leads GROUP BY status")
-for row in cursor.fetchall():
-    print(f"  {row[0]:20} : {row[1]}")
+cursor.execute("SELECT name, email, status FROM leads WHERE name = 'Manhattan Cleaning Solutions'")
+row = cursor.fetchone()
+print(f"Fixed: {row[0]} | {row[1]} | {row[2]}")
 
 conn.close()
-print('Reset done')
