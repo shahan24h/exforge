@@ -20,9 +20,7 @@ from emailer.send              import run_sender
 
 # ── CONFIG ──────────────────────────────────────────────
 SEARCH_QUERIES = [
-    ("restaurants",       "New York, NY"),
-    ("cleaning services", "New York, NY"),
-    ("plumbers",          "New York, NY"),
+    ("cleaning services", "UAE"),
 ]
 MAX_RESULTS  = 30
 RUN_TIME     = "09:00"  # run daily at 9am
@@ -93,7 +91,7 @@ def run_pipeline():
     print("\n" + "="*60)
     print("  PHASE 8 — Sending Emails")
     print("="*60)
-    asyncio.run(run_sender())
+    run_sender()
 
     print("\n" + "="*60)
     print(f"  CYCLE COMPLETE — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
@@ -129,6 +127,7 @@ if __name__ == "__main__":
     parser.add_argument("--report",    action="store_true", help="Run report generator only")
     parser.add_argument("--compose",   action="store_true", help="Run email composer only")
     parser.add_argument("--send",      action="store_true", help="Run email sender only")
+    parser.add_argument("--sent",      action="store_true", help="Show all sent emails")
     args = parser.parse_args()
 
     if args.schedule:
@@ -146,7 +145,23 @@ if __name__ == "__main__":
     elif args.compose:
         run_email_composer()
     elif args.send:
-        asyncio.run(run_sender())
+        run_sender()
+    elif args.sent:
+        import sqlite3
+        conn   = sqlite3.connect('data/leads.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, email, website, emailed_at FROM leads WHERE status='emailed'")
+        rows   = cursor.fetchall()
+        print(f"\n{'='*60}")
+        print(f"  EMAILS SENT — {len(rows)} total")
+        print(f"{'='*60}")
+        for row in rows:
+            print(f"  Date    : {row[3]}")
+            print(f"  Name    : {row[0]}")
+            print(f"  Email   : {row[1]}")
+            print(f"  Website : {row[2]}")
+            print()
+        conn.close()
     else:
         print("ExForge Lead Gen Agent")
         print("\nUsage:")
@@ -158,3 +173,4 @@ if __name__ == "__main__":
         print("  python main.py --report       # report only")
         print("  python main.py --compose      # compose only")
         print("  python main.py --send         # send only")
+        print("  python main.py --sent         # show all sent emails")

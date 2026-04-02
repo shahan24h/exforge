@@ -1,26 +1,25 @@
 TO      : America's Cleaning Service NYC
 WEBSITE : https://www.nycjanitorialservices.com/
 PHONE   : (917) 818-4438
-SUBJECT : One SEO issue we found on your site
+SUBJECT : America's Cleaning: One SEO issue found on audit
 SCORE   : 95/100
 ISSUES  : Title too long (69 chars, ideal < 60)
-DATE    : 2026-04-02 02:24
+DATE    : 2026-04-02 02:56
 
 ============================================================
 
-Hi there,
+Hey there,
 
-I was impressed by your 5-star reviews on Google—America's Cleaning Service clearly delivers great results for NYC clients.
+I was checking out America's Cleaning Service NYC's site and noticed you're killing it with those 5-star reviews. Your janitorial team clearly delivers.
 
-While auditing your site, I noticed your page title is running 69 characters. Sounds minor, but Google cuts it off in search results, which means potential customers aren't seeing your full message. This kind of thing can silently hurt click-through rates from search.
+One quick thing though—your page title is running a bit long (69 characters), which means it's getting cut off in Google search results. Since most NYC businesses searching for janitorial services decide based on that first snippet, it's likely costing you some clicks.
 
-Given how competitive the janitorial space is in NYC, even small optimizations can make a real difference in capturing those high-intent leads searching for cleaning services.
+This kind of fix usually leads to better visibility and more inquiries from quality clients in your area.
 
-Would you be open to a quick 15-minute call? I'd share what we found and some easy wins we could implement together—no pressure, just insights.
+I'd love to do a quick free audit and show you exactly what could shift for your website. Just 15 minutes.
 
-Let me know what works for your schedule.
+Let's hop on a call?
 
-Best,
 Shahan | PixelForgeBD
 https://www.pixelforgebd.com
 WhatsApp: +880 1714-918360
