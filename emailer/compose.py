@@ -30,7 +30,7 @@ def get_report_ready_leads():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT id, name, category, address, phone, website,
-               rating, reviews, audit_data, screenshot_path
+               rating, reviews, audit_data, screenshot_path, email
         FROM leads WHERE status = 'report_ready'
     """)
     rows = cursor.fetchall()
@@ -54,6 +54,7 @@ def get_report_ready_leads():
             "reviews":         row[7],
             "audit":           audit_data,
             "screenshot_path": row[9],
+            "email":           row[10] or "",
         })
     return leads
 
@@ -223,9 +224,11 @@ def run_email_composer():
             # Save to database
             save_email_to_db(lead["id"], email)
 
-            # Update status
-            update_lead_status(lead["phone"], "email_drafted")
-            print(f"    [✓] Status updated to email_drafted")
+            # Auto approve if email exists, otherwise flag for manual review
+            if lead["audit"].get("email"):
+                update_lead_status(lead["phone"], "approved_to_send")
+            else:
+                update_lead_status(lead["phone"], "email_drafted")
 
         except Exception as e:
             print(f"    [✗] Failed: {e}")

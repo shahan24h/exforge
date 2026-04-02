@@ -13,11 +13,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from scraper.maps_scraper      import scrape_google_maps, save_to_csv
 from database.db               import init_db, insert_lead, get_stats
 from shortlister.shortlist     import run_shortlister
-from approvals.approval_gate   import run_approval_gate
 from auditor.audit             import run_auditor
 from reporter.report_generator import run_report_generator
 from emailer.compose           import run_email_composer
-from approvals.approval_gate2  import run_approval_gate2
 from emailer.send              import run_sender
 
 # ── CONFIG ──────────────────────────────────────────────
@@ -72,18 +70,13 @@ def run_pipeline():
     print("="*60)
     run_shortlister()
 
-    # ── Phase 3: Human Approval Gate #1 ──
-    print("\n" + "="*60)
-    print("  PHASE 3 — Human Approval Gate #1")
-    print("="*60)
-    run_approval_gate()
 
     # ── Phase 4: Website Audit ──
     print("\n" + "="*60)
     print("  PHASE 4 — Website Auditor")
     print("="*60)
     asyncio.run(run_auditor())
-
+    #Removed Gate 1
     # ── Phase 5: Report Generation ──
     print("\n" + "="*60)
     print("  PHASE 5 — Report Generator")
@@ -95,13 +88,7 @@ def run_pipeline():
     print("  PHASE 6 — Email Composer")
     print("="*60)
     run_email_composer()
-
-    # ── Phase 7: Human Approval Gate #2 ──
-    print("\n" + "="*60)
-    print("  PHASE 7 — Human Approval Gate #2")
-    print("="*60)
-    run_approval_gate2()
-
+    #Removed Gate 7
     # ── Phase 8: Send Emails ──
     print("\n" + "="*60)
     print("  PHASE 8 — Sending Emails")

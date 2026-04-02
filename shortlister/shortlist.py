@@ -171,7 +171,7 @@ def run_shortlister():
         update_lead_score(lead["id"], score, reason)
 
         if keep:
-            update_lead_status(lead["phone"], "shortlisted")
+            update_lead_status(lead["phone"], "approved")
             print(f"  [✓] {name} — SHORTLISTED (score: {score}) — {reason}")
             shortlisted += 1
         else:
