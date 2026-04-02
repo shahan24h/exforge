@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import asyncio
 import json
 from datetime import datetime
@@ -55,7 +56,7 @@ def save_audit_result(lead_id: int, audit: dict):
     cursor = conn.cursor()
 
     # Add audit columns if they don't exist
-    for col in ["screenshot_path", "audit_data", "site_status", "audited_at"]:
+    for col in ["screenshot_path", "audit_data", "site_status", "audited_at", "email"]:
         try:
             cursor.execute(f"ALTER TABLE leads ADD COLUMN {col} TEXT")
             conn.commit()
@@ -67,17 +68,68 @@ def save_audit_result(lead_id: int, audit: dict):
             screenshot_path = ?,
             audit_data      = ?,
             site_status     = ?,
-            audited_at      = ?
+            audited_at      = ?,
+            email           = ?
         WHERE id = ?
     """, (
         audit.get("screenshot_path"),
         json.dumps(audit),
         audit.get("site_status"),
         datetime.now().strftime("%Y-%m-%d %H:%M"),
+        audit.get("email", ""),
         lead_id
     ))
     conn.commit()
     conn.close()
+
+
+async def extract_email(page, url: str) -> str:
+    """Try to extract email from website."""
+    try:
+        # Check current page for mailto links
+        emails = await page.eval_on_selector_all(
+            'a[href^="mailto:"]',
+            "els => els.map(e => e.href.replace('mailto:', '').split('?')[0].trim())"
+        )
+        if emails:
+            return emails[0]
+
+        # Try contact pages
+        contact_urls = [
+            url.rstrip("/") + "/contact",
+            url.rstrip("/") + "/contact-us",
+            url.rstrip("/") + "/about",
+        ]
+        for contact_url in contact_urls:
+            try:
+                await page.goto(contact_url, wait_until="domcontentloaded", timeout=10000)
+                await page.wait_for_timeout(1000)
+                emails = await page.eval_on_selector_all(
+                    'a[href^="mailto:"]',
+                    "els => els.map(e => e.href.replace('mailto:', '').split('?')[0].trim())"
+                )
+                if emails:
+                    return emails[0]
+            except:
+                continue
+
+        # Scan body text for email pattern
+        try:
+            body_text = await page.locator("body").inner_text(timeout=3000)
+            matches   = re.findall(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', body_text)
+            if matches:
+                valid = [m for m in matches if not any(
+                    x in m.lower() for x in ["@2x", ".png", ".jpg", "example", "sentry", "wix"]
+                )]
+                if valid:
+                    return valid[0]
+        except:
+            pass
+
+    except:
+        pass
+
+    return ""
 
 
 async def audit_website(page, lead: dict) -> dict:
@@ -85,16 +137,17 @@ async def audit_website(page, lead: dict) -> dict:
     Visit a website and run full audit:
     - Check if site is up
     - Take screenshot
+    - Extract email
     - Check SEO basics
     - Check mobile viewport
-    - Check page speed indicators
     """
-    url    = lead["website"]
-    name   = lead["name"]
-    audit  = {
+    url   = lead["website"]
+    name  = lead["name"]
+    audit = {
         "url":             url,
         "site_status":     "unknown",
         "screenshot_path": None,
+        "email":           "",
         "seo":             {},
         "issues":          [],
         "score":           0,
@@ -129,10 +182,25 @@ async def audit_website(page, lead: dict) -> dict:
     except Exception as e:
         audit["issues"].append(f"Screenshot failed: {str(e)[:100]}")
 
-    # ── Step 3: SEO checks ──
+    # ── Step 3: Extract email ──
+    email = await extract_email(page, url)
+    audit["email"] = email
+    if email:
+        print(f"    [📧] Email found: {email}")
+    else:
+        print(f"    [!] No email found")
+
+    # ── Step 4: Go back to main URL for SEO checks ──
+    try:
+        await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+        await page.wait_for_timeout(1000)
+    except:
+        pass
+
+    # ── Step 5: SEO checks ──
     seo    = {}
     issues = []
-    score  = 100  # start at 100, deduct for issues
+    score  = 100
 
     # Title tag
     try:

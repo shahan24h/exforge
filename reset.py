@@ -1,9 +1,7 @@
 import sqlite3
 
 conn = sqlite3.connect('data/leads.db')
-
-# Reset all processed leads back to audited for report regeneration
-conn.execute("UPDATE leads SET status='audited' WHERE status IN ('report_ready', 'email_drafted', 'approved_to_send')")
+conn.execute("UPDATE leads SET status='approved' WHERE status IN ('no_email', 'email_failed', 'audited', 'report_ready', 'email_drafted', 'approved_to_send')")
 conn.commit()
 
 cursor = conn.cursor()
