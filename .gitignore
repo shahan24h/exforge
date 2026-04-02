@@ -1,0 +1,7 @@
+.env
+data/leads.db
+data/*.csv
+__pycache__/
+*.pyc
+.idea/
+reset.py
