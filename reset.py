@@ -1,9 +1,7 @@
 import sqlite3
 
 conn = sqlite3.connect('data/leads.db')
-
-# Reset approved back to shortlisted for re-review
-conn.execute("UPDATE leads SET status='shortlisted' WHERE status='approved'")
+conn.execute("UPDATE leads SET status='audited' WHERE status='report_ready'")
 conn.commit()
 
 cursor = conn.cursor()
