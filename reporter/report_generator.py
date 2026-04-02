@@ -12,7 +12,6 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, HRFlowable
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.graphics.shapes import Drawing, Rect, String, Group
-from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.graphics import renderPDF
 
 load_dotenv()
@@ -154,39 +153,47 @@ def generate_revenue_impact(score: int, reviews: str) -> str:
 
 
 def build_score_chart(score: int, reviews: str) -> Drawing:
-    """Build a simple bar chart showing score vs max and estimated missed customers."""
+    """Simple horizontal bar showing SEO score vs perfect score."""
     try:
         review_count = int(reviews)
     except:
         review_count = 50
 
-    missed = review_count // 3 if score < 60 else review_count // 5 if score < 80 else review_count // 10
+    missed  = review_count // 3 if score < 60 else review_count // 5 if score < 80 else review_count // 10
     reached = review_count - missed
 
-    drawing = Drawing(500, 160)
+    drawing = Drawing(480, 120)
 
-    chart         = VerticalBarChart()
-    chart.x       = 60
-    chart.y       = 30
-    chart.width   = 380
-    chart.height  = 110
-    chart.data    = [[score, 100], [reached, review_count]]
-    chart.bars[0].fillColor = C_ACCENT
-    chart.bars[1].fillColor = C_GREEN
+    # ── SEO Score bar ──
+    drawing.add(String(10, 100, "SEO Score", fontSize=9, fillColor=C_DARK))
+    drawing.add(String(10, 86,  f"{score}/100", fontSize=8, fillColor=C_MUTED))
+    # background
+    drawing.add(Rect(120, 90, 320, 16, fillColor=C_BORDER, strokeColor=None))
+    # score fill
+    bar_w = int((score / 100) * 320)
+    bar_color = C_GREEN if score >= 80 else C_ORANGE if score >= 60 else C_RED
+    drawing.add(Rect(120, 90, bar_w, 16, fillColor=bar_color, strokeColor=None))
+    drawing.add(String(445, 96, f"{score}%", fontSize=9, fillColor=C_DARK))
 
-    chart.categoryAxis.categoryNames  = ["SEO Score", "Customers Reached"]
-    chart.valueAxis.valueMin          = 0
-    chart.valueAxis.valueMax          = max(100, review_count + 10)
-    chart.valueAxis.valueStep         = max(10, review_count // 5)
-    chart.groupSpacing                = 20
+    # ── Customers Reached bar ──
+    drawing.add(String(10, 58, "Customers Reached", fontSize=9, fillColor=C_DARK))
+    drawing.add(String(10, 44, f"{reached} of {review_count}", fontSize=8, fillColor=C_MUTED))
+    # background
+    drawing.add(Rect(120, 48, 320, 16, fillColor=C_BORDER, strokeColor=None))
+    # reached fill
+    reach_pct = int((reached / max(review_count, 1)) * 320)
+    drawing.add(Rect(120, 48, reach_pct, 16, fillColor=C_GREEN, strokeColor=None))
+    # missed fill
+    drawing.add(Rect(120 + reach_pct, 48, 320 - reach_pct, 16, fillColor=C_RED, strokeColor=None))
+    drawing.add(String(445, 54, f"{reached}", fontSize=9, fillColor=C_DARK))
 
-    drawing.add(chart)
-
-    # Legend
-    drawing.add(Rect(60,  8, 12, 12, fillColor=C_ACCENT, strokeColor=None))
-    drawing.add(String(76, 10, "Your Score / Potential", fontSize=8, fillColor=C_DARK))
-    drawing.add(Rect(220, 8, 12, 12, fillColor=C_GREEN,  strokeColor=None))
-    drawing.add(String(236, 10, "Estimated Reached",     fontSize=8, fillColor=C_DARK))
+    # ── Legend ──
+    drawing.add(Rect(10,  18, 12, 10, fillColor=C_GREEN, strokeColor=None))
+    drawing.add(String(26, 20, "Reached / Good", fontSize=8, fillColor=C_DARK))
+    drawing.add(Rect(160, 18, 12, 10, fillColor=C_RED,   strokeColor=None))
+    drawing.add(String(176, 20, "Missed / Issues", fontSize=8, fillColor=C_DARK))
+    drawing.add(Rect(310, 18, 12, 10, fillColor=C_ORANGE, strokeColor=None))
+    drawing.add(String(326, 20, "Needs Improvement", fontSize=8, fillColor=C_DARK))
 
     return drawing
 
