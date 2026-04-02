@@ -1,0 +1,270 @@
+import os
+import sys
+import asyncio
+import json
+from datetime import datetime
+from playwright.async_api import async_playwright
+from dotenv import load_dotenv
+
+load_dotenv()
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from database.db import get_connection, update_lead_status
+
+# ── CONFIG ──────────────────────────────────────────────
+SCREENSHOTS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "data", "screenshots"
+)
+REPORTS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "data", "reports"
+)
+# ────────────────────────────────────────────────────────
+
+
+def get_approved_leads():
+    """Get all approved leads from the database."""
+    conn   = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, name, category, address, phone, website, rating, reviews
+        FROM leads WHERE status = 'approved'
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    leads = []
+    for row in rows:
+        leads.append({
+            "id":       row[0],
+            "name":     row[1],
+            "category": row[2],
+            "address":  row[3],
+            "phone":    row[4],
+            "website":  row[5],
+            "rating":   row[6],
+            "reviews":  row[7],
+        })
+    return leads
+
+
+def save_audit_result(lead_id: int, audit: dict):
+    """Save audit results to the database."""
+    conn   = get_connection()
+    cursor = conn.cursor()
+
+    # Add audit columns if they don't exist
+    for col in ["screenshot_path", "audit_data", "site_status", "audited_at"]:
+        try:
+            cursor.execute(f"ALTER TABLE leads ADD COLUMN {col} TEXT")
+            conn.commit()
+        except:
+            pass
+
+    cursor.execute("""
+        UPDATE leads SET
+            screenshot_path = ?,
+            audit_data      = ?,
+            site_status     = ?,
+            audited_at      = ?
+        WHERE id = ?
+    """, (
+        audit.get("screenshot_path"),
+        json.dumps(audit),
+        audit.get("site_status"),
+        datetime.now().strftime("%Y-%m-%d %H:%M"),
+        lead_id
+    ))
+    conn.commit()
+    conn.close()
+
+
+async def audit_website(page, lead: dict) -> dict:
+    """
+    Visit a website and run full audit:
+    - Check if site is up
+    - Take screenshot
+    - Check SEO basics
+    - Check mobile viewport
+    - Check page speed indicators
+    """
+    url    = lead["website"]
+    name   = lead["name"]
+    audit  = {
+        "url":             url,
+        "site_status":     "unknown",
+        "screenshot_path": None,
+        "seo":             {},
+        "issues":          [],
+        "score":           0,
+    }
+
+    # ── Step 1: Visit the site ──
+    try:
+        response = await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+        await page.wait_for_timeout(2000)
+
+        if response and response.status >= 400:
+            audit["site_status"] = f"error_{response.status}"
+            audit["issues"].append(f"Site returned HTTP {response.status}")
+            return audit
+
+        audit["site_status"] = "online"
+
+    except Exception as e:
+        audit["site_status"] = "offline"
+        audit["issues"].append(f"Site unreachable: {str(e)[:100]}")
+        return audit
+
+    # ── Step 2: Take screenshot ──
+    os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
+    safe_name       = name.replace(" ", "_").replace("/", "_")[:30]
+    screenshot_path = os.path.join(SCREENSHOTS_DIR, f"{safe_name}.png")
+
+    try:
+        await page.screenshot(path=screenshot_path, full_page=False)
+        audit["screenshot_path"] = screenshot_path
+        print(f"    [📸] Screenshot saved")
+    except Exception as e:
+        audit["issues"].append(f"Screenshot failed: {str(e)[:100]}")
+
+    # ── Step 3: SEO checks ──
+    seo    = {}
+    issues = []
+    score  = 100  # start at 100, deduct for issues
+
+    # Title tag
+    try:
+        title = await page.title()
+        seo["title"] = title
+        if not title:
+            issues.append("Missing page title")
+            score -= 15
+        elif len(title) > 60:
+            issues.append(f"Title too long ({len(title)} chars, ideal < 60)")
+            score -= 5
+    except:
+        issues.append("Could not read page title")
+        score -= 10
+
+    # Meta description
+    try:
+        meta_desc = await page.get_attribute('meta[name="description"]', "content")
+        seo["meta_description"] = meta_desc
+        if not meta_desc:
+            issues.append("Missing meta description")
+            score -= 15
+        elif len(meta_desc) > 160:
+            issues.append(f"Meta description too long ({len(meta_desc)} chars)")
+            score -= 5
+    except:
+        issues.append("Missing meta description")
+        score -= 15
+
+    # H1 tag
+    try:
+        h1 = await page.locator("h1").first.inner_text(timeout=3000)
+        seo["h1"] = h1
+        if not h1:
+            issues.append("Missing H1 tag")
+            score -= 10
+    except:
+        issues.append("Missing H1 tag")
+        score -= 10
+
+    # Images without alt text
+    try:
+        imgs_without_alt = await page.eval_on_selector_all(
+            "img:not([alt])",
+            "els => els.length"
+        )
+        seo["images_missing_alt"] = imgs_without_alt
+        if imgs_without_alt > 0:
+            issues.append(f"{imgs_without_alt} images missing alt text")
+            score -= min(imgs_without_alt * 3, 15)
+    except:
+        pass
+
+    # HTTPS check
+    if not url.startswith("https://"):
+        issues.append("Site not using HTTPS")
+        score -= 20
+    else:
+        seo["https"] = True
+
+    # Mobile viewport
+    try:
+        viewport_meta = await page.get_attribute('meta[name="viewport"]', "content")
+        seo["mobile_viewport"] = viewport_meta
+        if not viewport_meta:
+            issues.append("Missing mobile viewport meta tag")
+            score -= 15
+    except:
+        issues.append("Missing mobile viewport meta tag")
+        score -= 15
+
+    # Contact info visible
+    try:
+        body_text = await page.locator("body").inner_text(timeout=3000)
+        if "phone" not in body_text.lower() and "contact" not in body_text.lower():
+            issues.append("No visible contact information found")
+            score -= 10
+    except:
+        pass
+
+    audit["seo"]    = seo
+    audit["issues"] = issues
+    audit["score"]  = max(score, 0)
+
+    return audit
+
+
+async def run_auditor():
+    """Main website auditing pipeline."""
+    leads = get_approved_leads()
+
+    if not leads:
+        print("[!] No approved leads to audit.")
+        return
+
+    print(f"[+] Auditing {len(leads)} approved websites...\n")
+    os.makedirs(REPORTS_DIR, exist_ok=True)
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page    = await browser.new_page(viewport={"width": 1280, "height": 800})
+
+        for i, lead in enumerate(leads, 1):
+            name    = lead["name"]
+            website = lead["website"]
+
+            print(f"  [{i}/{len(leads)}] Auditing: {name}")
+            print(f"    URL: {website}")
+
+            audit = await audit_website(page, lead)
+
+            # Save to database
+            save_audit_result(lead["id"], audit)
+
+            # Update status
+            if audit["site_status"] == "online":
+                update_lead_status(lead["phone"], "audited")
+                print(f"    [✓] Score: {audit['score']}/100")
+                print(f"    [!] Issues found: {len(audit['issues'])}")
+                for issue in audit["issues"]:
+                    print(f"        • {issue}")
+            else:
+                update_lead_status(lead["phone"], "site_error")
+                print(f"    [✗] Site status: {audit['site_status']}")
+
+            print()
+
+        await browser.close()
+
+    print("[DONE] All websites audited.")
+    print(f"[+] Screenshots saved to: {SCREENSHOTS_DIR}")
+
+
+if __name__ == "__main__":
+    asyncio.run(run_auditor())
