@@ -175,5 +175,6 @@ businesses where outreach is legally permitted in your region.
 ## Built By
 
 Built by [Shahan Ahmed](https://shahanahmed.com) — Data Scientist and ML Engineer.
+Read on medium: https://medium.com/@shahan24h/i-built-an-ai-agent-that-finds-small-businesses-audits-their-websites-and-sends-personalized-cold-69012ff90d90?postPublishedType=repub
 
 Follow the build on [The Shahan Stack](https://youtube.com/@theshahanstack)
