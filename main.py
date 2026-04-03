@@ -20,7 +20,11 @@ from emailer.send              import run_sender
 
 # ── CONFIG ──────────────────────────────────────────────
 SEARCH_QUERIES = [
-    ("cleaning services", "UAE"),
+    ("cleaning services", "Doha, Qatar"),
+    ("cleaning services", "Al Rayyan, Qatar"),
+    ("cleaning services", "Al Wakrah, Qatar"),
+    ("maid services", "Doha, Qatar"),
+    ("home cleaning", "Doha, Qatar"),
 ]
 MAX_RESULTS  = 30
 RUN_TIME     = "09:00"  # run daily at 9am

@@ -104,6 +104,7 @@ Rules:
 - Sign off as: {SENDER_NAME} | {AGENCY_NAME}
 - Include website: {AGENCY_WEBSITE}
 - Include WhatsApp: {AGENCY_WHATSAPP}
+- Always end with this exact line on a new line: "If you'd prefer not to hear from us, just reply with 'unsubscribe' and we'll remove you immediately."
 
 Return ONLY the email body — no subject line, no extra commentary.
 """

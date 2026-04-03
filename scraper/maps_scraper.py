@@ -1,6 +1,7 @@
 import asyncio
 import csv
 import os
+import random
 from datetime import datetime
 from playwright.async_api import async_playwright
 
@@ -20,8 +21,11 @@ async def scrape_google_maps(query: str, location: str, max_results: int = 10):
     results     = []
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
-        page    = await browser.new_page()
+        browser = await p.chromium.launch(headless=True)
+        from playwright_stealth import Stealth
+        context = await browser.new_context()
+        await Stealth().apply_stealth_async(context)
+        page = await context.new_page()
 
         print(f"[+] Searching: {search_term}")
         await page.goto(
@@ -29,7 +33,7 @@ async def scrape_google_maps(query: str, location: str, max_results: int = 10):
             wait_until="domcontentloaded",
             timeout=60000
         )
-        await page.wait_for_timeout(4000)
+        await page.wait_for_timeout(random.randint(3000, 6000))
 
         # ── Scroll to load more listings ──
         print("[+] Scrolling to load listings...")

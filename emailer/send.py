@@ -1,7 +1,8 @@
 import os
 import sys
-import smtplib
 import ssl
+import imaplib
+import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -58,6 +59,32 @@ def get_report_path(name: str) -> str:
     return os.path.join(REPORTS_DIR, f"{safe_name}_report.pdf")
 
 
+def save_to_sent_folder(msg) -> None:
+    """Save a copy of the sent email to the IMAP Sent folder."""
+    try:
+        print(f"    [📬] Connecting to IMAP: {SMTP_HOST}")
+        imap = imaplib.IMAP4_SSL(SMTP_HOST)
+        imap.login(SMTP_USER, SMTP_PASS)
+        print(f"    [📬] IMAP login successful")
+
+        result = imap.append(
+            "Sent",
+            "\\Seen",
+            imaplib.Time2Internaldate(datetime.now()),
+            msg.as_bytes()
+        )
+        print(f"    [📬] Append result: {result}")
+        imap.logout()
+
+    except Exception as e:
+        print(f"    [!] IMAP Sent save failed: {e}")
+
+        imap.logout()
+
+    except Exception as e:
+        print(f"    [!] IMAP Sent save failed: {e}")
+
+
 def send_email(to_email: str, to_name: str, subject: str, body: str, report_path: str = None) -> bool:
     """Send a single email with optional PDF attachment."""
     try:
@@ -85,6 +112,9 @@ def send_email(to_email: str, to_name: str, subject: str, body: str, report_path
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context) as server:
             server.login(SMTP_USER, SMTP_PASS)
             server.send_message(msg)
+
+        # Save copy to Sent folder
+        save_to_sent_folder(msg)
 
         return True
 
@@ -119,7 +149,7 @@ def run_sender():
     failed = 0
 
     for i, lead in enumerate(leads, 1):
-        name    = lead["name"]
+        name     = lead["name"]
         to_email = lead["email"]
 
         print(f"  [{i}/{len(leads)}] Sending to: {name}")
