@@ -1,7 +1,8 @@
 .env
-data/leads.db
-data/*.csv
+data/
 __pycache__/
 *.pyc
 .idea/
 reset.py
+test_imap.py
+*.bat
