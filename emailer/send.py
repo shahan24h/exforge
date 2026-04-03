@@ -7,7 +7,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-from datetime import datetime
+from datetime import datetime, timezone
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -70,7 +71,7 @@ def save_to_sent_folder(msg) -> None:
         result = imap.append(
             "Sent",
             "\\Seen",
-            imaplib.Time2Internaldate(datetime.now()),
+            imaplib.Time2Internaldate(datetime.now(timezone.utc)),
             msg.as_bytes()
         )
         print(f"    [📬] Append result: {result}")

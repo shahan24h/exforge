@@ -3,7 +3,7 @@ import os
 import sys
 import time
 import schedule
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
