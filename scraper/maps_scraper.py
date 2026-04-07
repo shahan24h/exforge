@@ -1,156 +1,132 @@
-import asyncio
-import csv
 import os
-import random
-from datetime import datetime
-from playwright.async_api import async_playwright
-
 import sys
+import csv
+import time
+import random
+import googlemaps
+from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database.db import init_db, insert_lead
+
+
 # ── CONFIG ──────────────────────────────────────────────
-SEARCH_QUERY = "cleaning services"
-LOCATION     = "New York, NY"
-MAX_RESULTS  = 30
-OUTPUT_DIR   = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+OUTPUT_DIR          = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data"
+)
 # ────────────────────────────────────────────────────────
 
 
-async def scrape_google_maps(query: str, location: str, max_results: int = 10):
+def scrape_google_maps(query: str, location: str, max_results: int = 30) -> list:
+    """
+    Fetch businesses from Google Maps using the official Places API.
+    Returns a list of business dicts.
+    """
+    gmaps       = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
     search_term = f"{query} in {location}"
     results     = []
+    seen_ids    = set()
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        from playwright_stealth import Stealth
-        context = await browser.new_context()
-        await Stealth().apply_stealth_async(context)
-        page = await context.new_page()
+    print(f"[+] Searching: {search_term}")
 
-        print(f"[+] Searching: {search_term}")
-        await page.goto(
-            f"https://www.google.com/maps/search/{search_term.replace(' ', '+')}",
-            wait_until="domcontentloaded",
-            timeout=60000
-        )
-        await page.wait_for_timeout(random.randint(3000, 6000))
+    try:
+        # Initial search
+        response = gmaps.places(query=search_term)
+        places   = response.get("results", [])
 
-        # ── Scroll to load more listings ──
-        print("[+] Scrolling to load listings...")
-        for _ in range(10):
-            try:
-                feed = page.locator('div[role="feed"]')
-                await feed.evaluate("el => el.scrollBy(0, 2000)")
-                await page.wait_for_timeout(2000)
-
-                # Check if we have enough links already
-                current_links = await page.eval_on_selector_all(
-                    'a[href*="/maps/place/"]',
-                    "els => els.map(e => e.href)"
-                )
-                if len(current_links) >= max_results:
+        # Paginate through results
+        while places and len(results) < max_results:
+            for place in places:
+                if len(results) >= max_results:
                     break
-            except:
+
+                place_id = place.get("place_id")
+                if place_id in seen_ids:
+                    continue
+                seen_ids.add(place_id)
+
+                try:
+                    # Get detailed info for each place
+                    detail = gmaps.place(
+                        place_id,
+                        fields=[
+                            "name", "formatted_address", "formatted_phone_number",
+                            "website", "rating", "user_ratings_total",
+                            "type", "business_status"
+                        ]
+                    ).get("result", {})
+
+                    # Skip permanently closed businesses
+                    if detail.get("business_status") == "CLOSED_PERMANENTLY":
+                        continue
+
+                    name     = detail.get("name", "N/A")
+                    address  = detail.get("formatted_address", "N/A")
+                    phone    = detail.get("formatted_phone_number", "N/A")
+                    website  = detail.get("website", "N/A")
+                    rating   = str(detail.get("rating", "N/A"))
+                    reviews  = str(detail.get("user_ratings_total", "N/A"))
+                    types = detail.get("types", [])
+                    category = types[0].replace("_", " ").title() if types else "N/A"
+
+                    business = {
+                        "name":       name,
+                        "category":   category,
+                        "address":    address,
+                        "phone":      phone,
+                        "website":    website,
+                        "rating":     rating,
+                        "reviews":    reviews,
+                        "location":   location,
+                        "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    }
+
+                    results.append(business)
+                    print(f"  [{len(results)}] {name} | {rating} stars | {address[:50]}")
+
+                    # Polite delay between detail requests
+                    time.sleep(random.uniform(0.3, 0.8))
+
+                except Exception as e:
+                    print(f"  [!] Error fetching details: {e}")
+                    continue
+
+            # Get next page if available
+            next_page_token = response.get("next_page_token")
+            if not next_page_token or len(results) >= max_results:
                 break
 
-        # ── Collect all place URLs after scrolling ──
-        print("[+] Collecting place URLs...")
-        all_links = await page.eval_on_selector_all(
-            'a[href*="/maps/place/"]',
-            "els => els.map(e => e.href)"
-        )
+            # Google requires a short wait before using next_page_token
+            time.sleep(2)
+            response = gmaps.places(
+                query=search_term,
+                page_token=next_page_token
+            )
+            places = response.get("results", [])
 
-        # Deduplicate URLs
-        seen  = set()
-        hrefs = []
-        for link in all_links:
-            base = link.split("/@")[0]  # strip coordinates
-            if base not in seen and "/maps/place/" in base:
-                seen.add(base)
-                hrefs.append(link)
+    except Exception as e:
+        print(f"[!] Google Maps API error: {e}")
 
-        hrefs = hrefs[:max_results]
-        print(f"[+] Found {len(hrefs)} unique place URLs. Visiting each...")
-
-        # ── Visit each place URL directly ──
-        for i, href in enumerate(hrefs):
-            try:
-                await page.goto(href, wait_until="domcontentloaded", timeout=30000)
-
-                # Wait for place name to load
-                try:
-                    await page.wait_for_selector('h1', timeout=5000)
-                    await page.wait_for_timeout(1000)
-                except:
-                    await page.wait_for_timeout(2000)
-
-                # ── Extract fields ──────────────────────
-                name = await get_text(page, 'h1.fontHeadlineLarge')
-                if not name:
-                    name = await get_text(page, 'h1')
-
-                rating = await get_text(page, 'span.fontDisplayLarge')
-                if not rating:
-                    rating = await get_text(page, 'div.fontDisplayLarge')
-
-                reviews = await get_attr(page, 'span[aria-label*="review"]', "aria-label")
-                if reviews:
-                    reviews = reviews.replace(",", "").split(" ")[0]
-
-                category = await get_text(page, 'button[jsaction*="category"]')
-                address  = await get_text(page, 'button[data-item-id="address"] div[class*="fontBodyMedium"]')
-                phone    = await get_text(page, 'button[data-item-id*="phone"] div[class*="fontBodyMedium"]')
-                website  = await get_attr(page, 'a[data-item-id="authority"]', "href")
-
-                business = {
-                    "name":       name     or "N/A",
-                    "category":   category or "N/A",
-                    "address":    address  or "N/A",
-                    "phone":      phone    or "N/A",
-                    "website":    website  or "N/A",
-                    "rating":     rating   or "N/A",
-                    "reviews":    reviews  or "N/A",
-                    "location":   location,
-                    "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                }
-
-                results.append(business)
-                print(f"  [{i+1}] {business['name']} | {business['rating']} stars | {business['address']}")
-
-            except Exception as e:
-                print(f"  [!] Error on listing {i+1}: {e}")
-                continue
-
-        await browser.close()
-
+    print(f"[+] Found {len(results)} businesses")
     return results
 
 
-async def get_text(page, selector, attr=None):
-    try:
-        el = page.locator(selector).first
-        if attr:
-            return await el.get_attribute(attr, timeout=2000)
-        return (await el.inner_text(timeout=2000)).strip()
-    except:
-        return None
-
-
-async def get_attr(page, selector, attr):
-    try:
-        el = page.locator(selector).first
-        return await el.get_attribute(attr, timeout=2000)
-    except:
-        return None
-
-def save_to_csv(data: list, query: str, location: str):
+def save_to_csv(data: list, query: str, location: str) -> str:
+    """Save scraped results to a timestamped CSV file."""
     if not data:
         print("[!] No data to save.")
-        return
+        return ""
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename  = f"{OUTPUT_DIR}/{query.replace(' ', '_')}_{location.replace(', ', '_')}_{timestamp}.csv"
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename  = os.path.join(
+        OUTPUT_DIR,
+        f"{query.replace(' ', '_')}_{location.replace(', ', '_')}_{timestamp}.csv"
+    )
 
     with open(filename, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=data[0].keys())
@@ -161,11 +137,11 @@ def save_to_csv(data: list, query: str, location: str):
     return filename
 
 
-async def main():
+if __name__ == "__main__":
+    # Test run
     init_db()
-    data = await scrape_google_maps(SEARCH_QUERY, LOCATION, MAX_RESULTS)
-
-    save_to_csv(data, SEARCH_QUERY, LOCATION)
+    data = scrape_google_maps("restaurants", "Dhaka, Bangladesh", 10)
+    save_to_csv(data, "restaurants", "Dhaka, Bangladesh")
 
     inserted = 0
     skipped  = 0
@@ -174,9 +150,4 @@ async def main():
             inserted += 1
         else:
             skipped += 1
-
-    print(f"[✓] DB: {inserted} inserted, {skipped} skipped (duplicates)")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    print(f"[✓] DB: {inserted} inserted, {skipped} skipped")

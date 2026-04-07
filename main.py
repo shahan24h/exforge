@@ -20,11 +20,16 @@ from emailer.send              import run_sender
 
 # ── CONFIG ──────────────────────────────────────────────
 SEARCH_QUERIES = [
-    ("cleaning services", "Doha, Qatar"),
-    ("cleaning services", "Al Rayyan, Qatar"),
-    ("cleaning services", "Al Wakrah, Qatar"),
-    ("maid services", "Doha, Qatar"),
-    ("home cleaning", "Doha, Qatar"),
+    ("restaurants", "London, UK"),
+    ("restaurants", "Shoreditch, London"),
+    ("restaurants", "Canary Wharf, London"),
+    ("restaurants", "Camden, London"),
+    ("restaurants", "Brixton, London"),
+    ("cafe", "London, UK"),
+    ("cafe", "Notting Hill, London"),
+    ("restaurant", "Greenwich, London"),
+    ("restaurant", "Hackney, London"),
+    ("restaurant", "Islington, London"),
 ]
 MAX_RESULTS  = 30
 RUN_TIME     = "09:00"  # run daily at 9am
@@ -41,8 +46,7 @@ async def scrape_phase():
 
     for query, location in SEARCH_QUERIES:
         print(f"\n[+] Scraping: {query} in {location}")
-        data = await scrape_google_maps(query, location, MAX_RESULTS)
-        save_to_csv(data, query, location)
+        data = scrape_google_maps(query, location, MAX_RESULTS)
 
         inserted = 0
         skipped  = 0
