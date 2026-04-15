@@ -439,7 +439,7 @@ Data Scientist & ML Engineer
 
 [![Website](https://img.shields.io/badge/Website-shahanahmed.com-0ea5e9?style=flat-square)](https://shahanahmed.com)
 [![GitHub](https://img.shields.io/badge/GitHub-shahan24h-181717?style=flat-square&logo=github)](https://github.com/shahan24h)
-[![LinkedIn]([https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat-square&logo=linkedin)](https://linkedin.com/in/shahan-ahmed](https://www.linkedin.com/in/shahan24h/))
+[![LinkedIn](https://linkedin.com/in/shahan-ahmed](https://www.linkedin.com/in/shahan24h/))
 
 </div>
 
