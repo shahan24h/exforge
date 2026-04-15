@@ -23,7 +23,7 @@
 <br/>
 
 > Built by **[Shahan Ahmed](https://shahanahmed.com)** for **PixelForgeBD**
-> A real agent that ran live outreach across Qatar — 64+ cold emails sent autonomously
+> A real agent running real outreach — 64+ cold emails sent autonomously
 
 <br/>
 
@@ -44,7 +44,7 @@ You set the niche → ExForge does everything else
 No manual prospecting. No copy-paste emails. No generic templates.
 Every email references **specific issues found on that business's actual website.**
 
-**Proven in production** — ran live targeting cleaning services across Doha, Al Rayyan, and Al Wakrah, Qatar. Generated 24 real PDFs, 24 email drafts, and sent 64+ cold emails.
+**Proven in production** — ran live targeting local businesses across multiple cities and niches. Generated real PDFs, email drafts, and sent 64+ cold emails autonomously.
 
 ---
 
@@ -120,8 +120,8 @@ IMAP_USER=you@youragency.com
 IMAP_PASSWORD=your-app-password
 
 # ── Target ─────────────────────────────────────────────
-TARGET_NICHE=cleaning services        # What kind of businesses to find
-TARGET_LOCATION=Doha, Qatar           # Where to search
+TARGET_NICHE=restaurants              # Any business type — restaurants, dentists, plumbers, etc.
+TARGET_LOCATION=Brooklyn, New York    # Any city, anywhere in the world
 MAX_LEADS_PER_RUN=20                  # How many to process per run
 MIN_AI_SCORE=6                        # Only proceed with leads scoring 6+
 ```
@@ -173,10 +173,10 @@ Playwright opens a headless Chromium browser and searches Google Maps for your `
 
 Results are saved as **timestamped CSV files** in `data/` like:
 ```
-data/cleaning_services_Doha_Qatar_20260404_002404.csv
+data/restaurants_Brooklyn_NewYork_20260414_090000.csv
 ```
 
-Multiple search terms run automatically to maximize coverage — ExForge searched `cleaning services`, `home cleaning`, and `maid services` across Doha, Al Rayyan, and Al Wakrah in production.
+You can run multiple search terms automatically to maximize coverage — for example targeting `restaurants`, `cafes`, and `diners` in the same city in a single run.
 
 ---
 
@@ -208,8 +208,8 @@ Playwright visits each shortlisted business website and checks:
 
 A **full-page screenshot** is saved to `data/screenshots/` as a PNG:
 ```
-data/screenshots/Cleanology.png
-data/screenshots/Fresho_Cleaning_Services.png
+data/screenshots/Joes_Pizza.png
+data/screenshots/Brooklyn_Plumbing_Co.png
 ```
 
 ---
@@ -248,8 +248,8 @@ A professional PDF audit report is generated per business using `reportlab` and 
 The audit data is sent to **Claude Haiku** which writes a short, personalized cold email. Each draft is saved as a `.txt` file in `data/drafts/` before sending:
 
 ```
-data/drafts/Cleanology_draft.txt
-data/drafts/Fresho_Cleaning_Services_draft.txt
+data/drafts/Joes_Pizza_draft.txt
+data/drafts/Brooklyn_Plumbing_Co_draft.txt
 ```
 
 The email references the business by name and mentions **2–3 specific issues** found during the audit — no templates, no generic copy.
@@ -257,17 +257,17 @@ The email references the business by name and mentions **2–3 specific issues**
 **Example output:**
 
 ```
-Subject: Quick note about Cleanology's website
+Subject: Quick note about Joe's Pizza's website
 
 Hi,
 
-I came across Cleanology while searching for cleaning services in Doha
+I came across Joe's Pizza while searching for restaurants in Brooklyn
 and ran a quick audit on your site.
 
 A few things stood out — the site isn't loading over HTTPS, there's
 no mobile layout (most searches happen on phones), and the page takes
 over 7 seconds to load which typically costs a significant share of
-visitors before they see your services.
+visitors before they see your menu.
 
 I've attached a short report with the full details.
 
@@ -435,7 +435,7 @@ Pull requests are welcome. If you add new scrapers, audit checks, or output form
 
 **Shahan Ahmed**
 
-Data Scientist & ML Engineer · PixelForgeBD Founder
+Data Scientist & ML Engineer
 
 [![Website](https://img.shields.io/badge/Website-shahanahmed.com-0ea5e9?style=flat-square)](https://shahanahmed.com)
 [![GitHub](https://img.shields.io/badge/GitHub-shahan24h-181717?style=flat-square&logo=github)](https://github.com/shahan24h)
