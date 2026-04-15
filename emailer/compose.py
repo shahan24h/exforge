@@ -16,7 +16,7 @@ AGENCY_NAME       = "PixelForgeBD"
 AGENCY_WEBSITE    = "https://www.pixelforgebd.com"
 AGENCY_EMAIL      = "hello@pixelforgebd.com"
 AGENCY_WHATSAPP   = "+880 1714-918360"
-SENDER_NAME       = "Shahan"
+SENDER_NAME       = "Atiqul"
 DRAFTS_DIR        = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "data", "drafts"
