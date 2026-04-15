@@ -1,14 +1,14 @@
 
 <div align="center">
 
-```
+<pre align="center">
 ███████╗██╗  ██╗███████╗ ██████╗ ██████╗  ██████╗ ███████╗
 ██╔════╝╚██╗██╔╝██╔════╝██╔═══██╗██╔══██╗██╔════╝ ██╔════╝
 █████╗   ╚███╔╝ █████╗  ██║   ██║██████╔╝██║  ███╗█████╗
 ██╔══╝   ██╔██╗ ██╔══╝  ██║   ██║██╔══██╗██║   ██║██╔══╝
 ███████╗██╔╝ ██╗██║     ╚██████╔╝██║  ██║╚██████╔╝███████╗
 ╚══════╝╚═╝  ╚═╝╚═╝      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝
-```
+</pre>
 
 ### 🔥 AI-Powered Lead Generation Agent for Web Agencies & Freelancers
 
@@ -22,7 +22,7 @@
 
 <br/>
 
-> Built by **[Shahan Ahmed](https://shahanahmed.com)** for **PixelForgeBD**
+> Built by **[Shahan Ahmed](https://shahanahmed.com)** for **PixelForgeBD**  
 > A real agent running real outreach — 64+ cold emails sent autonomously
 
 <br/>
@@ -435,7 +435,7 @@ Pull requests are welcome. If you add new scrapers, audit checks, or output form
 
 **Shahan Ahmed**
 
-Data Scientist & ML Engineer
+Data Scientist & ML Engineer · PixelForgeBD Founder
 
 [![Website](https://img.shields.io/badge/Website-shahanahmed.com-0ea5e9?style=flat-square)](https://shahanahmed.com)
 [![GitHub](https://img.shields.io/badge/GitHub-shahan24h-181717?style=flat-square&logo=github)](https://github.com/shahan24h)
