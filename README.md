@@ -77,7 +77,7 @@ Every email references **specific issues found on that business's actual website
 | 📄 **PDF Report Generation** | Professional audit report with grade, issues & revenue impact |
 | 📝 **Email Drafts** | Claude writes unique draft `.txt` per business before sending |
 | 📬 **Auto Email Sending** | SMTP dispatch with PDF attached using your business email |
-| ✅ **Approval Gate** | Optional human review step before emails go out |
+| ✅ **Approval Gate** | Optional human review step before emails go out | It is currently excluded.
 | 🔄 **Windows Scheduler** | `run_exforge.bat` for Task Scheduler automation |
 | 🗃️ **SQLite State Tracking** | `leads.db` prevents duplicate scrapes and double-sending |
 
