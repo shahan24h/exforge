@@ -91,7 +91,7 @@ Every email references **specific issues found on that business's actual website
 git clone https://github.com/shahan24h/exforge.git
 cd exforge
 pip install -r requirements.txt
-playwright install chromium
+camoufox fetch
 ```
 
 ### Step 2 — Create Your `.env` File
@@ -194,7 +194,7 @@ Leads scoring **below `MIN_AI_SCORE`** (default: 6) are skipped. All results are
 
 ### 🔍 Step 3 — Website Auditor (`auditor/audit.py`)
 
-Playwright visits each shortlisted business website and checks:
+Camoufox (a stealth, anti-detect Firefox build driven via Playwright) visits each shortlisted business website and checks:
 
 | Check | What It Looks For |
 |---|---|
@@ -345,6 +345,7 @@ exforge/
 ```txt
 anthropic
 playwright
+camoufox
 reportlab
 Pillow
 python-dotenv
@@ -357,7 +358,7 @@ Install everything:
 
 ```bash
 pip install -r requirements.txt
-playwright install chromium
+camoufox fetch
 ```
 
 ---
@@ -403,7 +404,7 @@ Any **local, independent business** with an outdated website is a valid target.
 ## 🗺️ Roadmap
 
 - [ ] **Outscraper integration** — replace Google Maps scraping with [Outscraper API](https://outscraper.com) for reliable, ban-free data with built-in email extraction (~$3/1,000 results, pay-per-use)
-- [ ] **Camoufox** — stealth Firefox browser as a free alternative to bypass bot detection
+- [x] **Camoufox** — stealth Firefox browser as a free alternative to bypass bot detection
 - [ ] **Follow-up sequence** — automated 7-day follow-up email for non-replies
 - [ ] **Web dashboard** — view pipeline status, sent emails, and reply tracking in browser
 - [ ] **Docker deployment** — containerized for 24/7 VPS/Linux hosting

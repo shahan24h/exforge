@@ -4,7 +4,7 @@ import re
 import asyncio
 import json
 from datetime import datetime
-from playwright.async_api import async_playwright
+from camoufox.async_api import AsyncCamoufox
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -275,9 +275,8 @@ async def run_auditor():
     print(f"[+] Auditing {len(leads)} approved websites...\n")
     os.makedirs(REPORTS_DIR, exist_ok=True)
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-        page    = await browser.new_page(viewport={"width": 1280, "height": 800})
+    async with AsyncCamoufox(headless=True) as browser:
+        page = await browser.new_page(viewport={"width": 1280, "height": 800})
 
         for i, lead in enumerate(leads, 1):
             print(f"  [{i}/{len(leads)}] Auditing: {lead['name']}")
@@ -296,8 +295,6 @@ async def run_auditor():
                 update_lead_status(lead["phone"], "site_error")
                 print(f"    [✗] Site status: {audit['site_status']}")
             print()
-
-        await browser.close()
 
     print("[DONE] All websites audited.")
     print(f"[+] Screenshots saved to: {SCREENSHOTS_DIR}")
